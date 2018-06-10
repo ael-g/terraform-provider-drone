@@ -7,3 +7,4 @@ resource "drone_activated_repository" "terraform-provider-drone" {
 #resource "drone_activated_repository" "est" {
 #    name = "ael-g/cicd"
 #}
+
