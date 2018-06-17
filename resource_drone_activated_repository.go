@@ -1,55 +1,50 @@
 package main
 
 import (
-	"log"
 	"errors"
-	"strings"
-        "github.com/hashicorp/terraform/helper/schema"
 	"github.com/drone/drone-go/drone"
+	"github.com/hashicorp/terraform/helper/schema"
 	"golang.org/x/oauth2"
-)
-
-const (
-	token = ""
-	host  = ""
+	"log"
+	"strings"
 )
 
 func droneActivatedRepository() *schema.Resource {
-        return &schema.Resource{
-                Create: resourceServerCreate,
-                Read:   resourceServerRead,
-                Update: resourceServerUpdate,
-                Delete: resourceServerDelete,
+	return &schema.Resource{
+		Create: resourceServerCreate,
+		Read:   resourceServerRead,
+		Update: resourceServerUpdate,
+		Delete: resourceServerDelete,
 
-                Schema: map[string]*schema.Schema{
-                        "name": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Required: true,
-                        },
-                        "hooks": &schema.Schema{
-                                Type:     schema.TypeSet,
+		Schema: map[string]*schema.Schema{
+			"name": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"hooks": &schema.Schema{
+				Type:     schema.TypeSet,
 				Elem:     &schema.Schema{Type: schema.TypeString},
-                                Optional: true,
-                        },
+				Optional: true,
+			},
 			"is_protected": &schema.Schema{
-                                Type:     schema.TypeBool,
-                                Optional: true,
-                        },
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"is_trusted": &schema.Schema{
-                                Type:     schema.TypeBool,
-                                Optional: true,
-                        },
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"visibility": &schema.Schema{
-                                Type:     schema.TypeSet,
+				Type:     schema.TypeSet,
 				Elem:     &schema.Schema{Type: schema.TypeString},
-                                Optional: true,
-                        },
+				Optional: true,
+			},
 			"timeout": &schema.Schema{
-                                Type:     schema.TypeInt,
-                                Optional: true,
-                        },
-                },
-        }
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+		},
+	}
 }
 
 func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
@@ -60,7 +55,7 @@ func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
 			AccessToken: token,
 		},
 	)
-        name := d.Get("name").(string)
+	name := d.Get("name").(string)
 	nameParts := strings.Split(name, "/")
 	if len(nameParts) != 2 {
 		return errors.New("repo name must be 'org/name'")
@@ -76,17 +71,31 @@ func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-        d.SetId(name)
+	// Repo parameters
+	isTrusted := d.Get("is_trusted").(bool)
+	timeout := d.Get("timeout").(int64)
 
-        return nil
+	repoPatch := drone.RepoPatch{
+		IsTrusted: &isTrusted,
+		Timeout: &timeout,
+	}
+
+	_, err = client.RepoPatch(nameParts[0], nameParts[1], &repoPatch)
+	if err != nil {
+		return err
+	}
+
+	d.SetId(name)
+
+	return nil
 }
 
 func resourceServerRead(d *schema.ResourceData, m interface{}) error {
-        return nil
+	return nil
 }
 
 func resourceServerUpdate(d *schema.ResourceData, m interface{}) error {
-        return nil
+	return nil
 }
 
 func resourceServerDelete(d *schema.ResourceData, m interface{}) error {
@@ -98,11 +107,11 @@ func resourceServerDelete(d *schema.ResourceData, m interface{}) error {
 		},
 	)
 
-        name := d.Get("name").(string)
-        nameParts := strings.Split(name, "/")
-        if len(nameParts) != 2 {
-                return errors.New("repo name must be 'org/name'")
-        }
+	name := d.Get("name").(string)
+	nameParts := strings.Split(name, "/")
+	if len(nameParts) != 2 {
+		return errors.New("repo name must be 'org/name'")
+	}
 
 	client := drone.NewClient(host, auther)
 
@@ -113,6 +122,6 @@ func resourceServerDelete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-        d.SetId("")
-        return nil
+	d.SetId("")
+	return nil
 }

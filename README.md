@@ -3,6 +3,11 @@ Terraform Drone provider
 
 # Build
 ```
+Create const file with:
+const (
+        token = ""
+        host  = ""
+)
 go get ./...
 go build -o terraform-provider-drone
 ```
