@@ -11,10 +11,10 @@ import (
 
 func droneActivatedRepository() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceServerCreate,
-		Read:   resourceServerRead,
-		Update: resourceServerUpdate,
-		Delete: resourceServerDelete,
+		Create: resourceActivatedRepositoryCreate,
+		Read:   resourceActivatedRepositoryRead,
+		Update: resourceActivatedRepositoryUpdate,
+		Delete: resourceActivatedRepositoryDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
@@ -47,7 +47,7 @@ func droneActivatedRepository() *schema.Resource {
 	}
 }
 
-func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
+func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) error {
 	config := new(oauth2.Config)
 	auther := config.Client(
 		oauth2.NoContext,
@@ -90,15 +90,15 @@ func resourceServerCreate(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceServerRead(d *schema.ResourceData, m interface{}) error {
+func resourceActivatedRepositoryRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceServerUpdate(d *schema.ResourceData, m interface{}) error {
+func resourceActivatedRepositoryUpdate(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceServerDelete(d *schema.ResourceData, m interface{}) error {
+func resourceActivatedRepositoryDelete(d *schema.ResourceData, m interface{}) error {
 	config := new(oauth2.Config)
 	auther := config.Client(
 		oauth2.NoContext,
