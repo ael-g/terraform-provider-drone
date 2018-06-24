@@ -5,4 +5,5 @@ pipeline:
       - yeah=${yeah}
     secrets: [ yeah]
     commands:
-      - echo yeah secret is ${yeah}
+      - echo yeah secret is ${yeah} > tmp
+      - cat tmp
