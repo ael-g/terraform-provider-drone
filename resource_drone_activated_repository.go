@@ -1,12 +1,8 @@
 package main
 
 import (
-	"errors"
 	"github.com/drone/drone-go/drone"
 	"github.com/hashicorp/terraform/helper/schema"
-	"golang.org/x/oauth2"
-	"log"
-	"strings"
 )
 
 func droneActivatedRepository() *schema.Resource {
@@ -22,7 +18,7 @@ func droneActivatedRepository() *schema.Resource {
 				Required: true,
 			},
 			"hooks": &schema.Schema{
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
@@ -35,7 +31,7 @@ func droneActivatedRepository() *schema.Resource {
 				Optional: true,
 			},
 			"visibility": &schema.Schema{
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
@@ -48,49 +44,76 @@ func droneActivatedRepository() *schema.Resource {
 }
 
 func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) error {
-	config := new(oauth2.Config)
-	auther := config.Client(
-		oauth2.NoContext,
-		&oauth2.Token{
-			AccessToken: token,
-		},
-	)
-	name := d.Get("name").(string)
-	nameParts := strings.Split(name, "/")
-	if len(nameParts) != 2 {
-		return errors.New("repo name must be 'org/name'")
-	}
+        client := getDroneClient()
 
-	client := drone.NewClient(host, auther)
+	repoFullName := d.Get("name").(string)
 
-	user, err := client.Self()
-	log.Println(user, err)
+        owner, repoName, err := splitRepoName(repoFullName)
+        if err != nil {
+                return err
+        }
 
-	_, err = client.RepoPost(nameParts[0], nameParts[1])
+	_, err = client.RepoPost(owner, repoName)
 	if err != nil {
 		return err
 	}
 
-	// Repo parameters
-	isTrusted := d.Get("is_trusted").(bool)
-	timeout := d.Get("timeout").(int64)
+	repoPatch := drone.RepoPatch{}
 
-	repoPatch := drone.RepoPatch{
-		IsTrusted: &isTrusted,
-		Timeout: &timeout,
+	isTrusted, ok := d.GetOk("is_trusted")
+	if ok {
+		isTrustedTmp := isTrusted.(bool)
+		repoPatch.IsTrusted = &isTrustedTmp
 	}
 
-	_, err = client.RepoPatch(nameParts[0], nameParts[1], &repoPatch)
+	timeout, ok := d.GetOk("timeout")
+	if ok {
+		timeoutTmp := timeout.(int64)
+		repoPatch.Timeout = &timeoutTmp
+	}
+
+	repo, err := client.RepoPatch(owner, repoName, &repoPatch)
 	if err != nil {
 		return err
 	}
 
-	d.SetId(name)
+	d.Set("is_trusted", repo.IsTrusted)
+	d.Set("timeout", repo.Timeout)
+
+	d.SetId(repoFullName)
 
 	return nil
 }
 
 func resourceActivatedRepositoryRead(d *schema.ResourceData, m interface{}) error {
+	client := getDroneClient()
+
+	repoFullName := d.Get("name").(string)
+
+        owner, repoName, err := splitRepoName(repoFullName)
+        if err != nil {
+                return err
+        }
+
+	repoList, err := client.RepoList()
+	if err != nil {
+		return err
+	}
+
+	notFound := true
+	for _, repo := range repoList {
+		if repo.Name == repoName && repo.Owner == owner {
+			notFound = false
+			//d.Set("is_trusted", repo.IsTrusted)
+			//d.Set("timeout", repo.Timeout)
+		}
+	}
+
+	if notFound {
+		d.SetId("")
+		return nil
+	}
+
 	return nil
 }
 
@@ -99,29 +122,19 @@ func resourceActivatedRepositoryUpdate(d *schema.ResourceData, m interface{}) er
 }
 
 func resourceActivatedRepositoryDelete(d *schema.ResourceData, m interface{}) error {
-	config := new(oauth2.Config)
-	auther := config.Client(
-		oauth2.NoContext,
-		&oauth2.Token{
-			AccessToken: token,
-		},
-	)
+	client := getDroneClient()
 
-	name := d.Get("name").(string)
-	nameParts := strings.Split(name, "/")
-	if len(nameParts) != 2 {
-		return errors.New("repo name must be 'org/name'")
-	}
+        owner, repoName, err := splitRepoName(d.Get("name").(string))
+        if err != nil {
+                return err
+        }
 
-	client := drone.NewClient(host, auther)
-
-	user, err := client.Self()
-	log.Println(user, err)
-
-	err = client.RepoDel(nameParts[0], nameParts[1])
+	err = client.RepoDel(owner, repoName)
 	if err != nil {
 		return err
 	}
+
 	d.SetId("")
 	return nil
 }
+
