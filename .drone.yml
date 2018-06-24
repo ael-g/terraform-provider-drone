@@ -1,6 +1,8 @@
 pipeline:
   just_echo:
     image: alpine
+    environment:
+      - yeah=${yeah}
     secrets: [ yeah]
     commands:
-      - echo ${yeah}
+      - echo yeah secret is ${yeah}
