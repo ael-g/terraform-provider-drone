@@ -3,4 +3,4 @@ pipeline:
     image: alpine
     secrets: [ yeah]
     commands:
-      - echo $${yeah}
+      - echo ${yeah}
