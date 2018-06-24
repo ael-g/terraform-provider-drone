@@ -4,6 +4,7 @@ Terraform Drone provider
 # Build
 ```
 Create const file with:
+package main
 const (
         token = ""
         host  = ""

@@ -1,12 +1,8 @@
 package main
 
 import (
-	"strings"
-	"fmt"
-	"errors"
 	"github.com/drone/drone-go/drone"
 	"github.com/hashicorp/terraform/helper/schema"
-	"golang.org/x/oauth2"
 )
 
 func droneSecret() *schema.Resource {
@@ -20,6 +16,7 @@ func droneSecret() *schema.Resource {
 			"name": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"repository": &schema.Schema{
 				Type:     schema.TypeString,
@@ -39,33 +36,28 @@ func droneSecret() *schema.Resource {
 }
 
 func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
-	config := new(oauth2.Config)
-	auther := config.Client(
-		oauth2.NoContext,
-		&oauth2.Token{
-			AccessToken: token,
-		},
-	)
-	repository := d.Get("repository").(string)
-        repositoryNameParts := strings.Split(repository, "/")
-        if len(repositoryNameParts) != 2 {
-                return errors.New("repo name must be 'org/name'")
-        }
+	client := getDroneClient()
+
+	owner, repoName, err := splitRepoName(d.Get("repository").(string))
+	if err != nil {
+		return err
+	}
 
 	name := d.Get("name").(string)
 	value := d.Get("value").(string)
-	events := d.Get("events").([]string)
-	fmt.Println(events)
-
-	client := drone.NewClient(host, auther)
+	eventsRaw := d.Get("events")
+	events := []string{}
+	for _, event := range eventsRaw.([]interface{}) {
+		events = append(events, event.(string))
+	}
 
 	secret := drone.Secret{
 		Name: name,
 		Value: value,
-	//	Events: events,
+		Events: events,
 	}
 
-	_, err := client.SecretCreate(repositoryNameParts[0], repositoryNameParts[1], &secret)
+	_, err = client.SecretCreate(owner, repoName, &secret)
 	if err != nil {
 		return err
 	}
@@ -76,33 +68,69 @@ func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
+	client := getDroneClient()
+
+	owner, repoName, err := splitRepoName(d.Get("repository").(string))
+	if err != nil {
+		return err
+	}
+
+	name := d.Get("name").(string)
+
+	secret, err := client.Secret(owner, repoName, name)
+	if err != nil {
+		d.SetId("")
+		return nil
+	}
+
+	d.Set("events", secret.Events)
+
 	return nil
 }
 
 func resourceSecretUpdate(d *schema.ResourceData, m interface{}) error {
+	client := getDroneClient()
+
+	owner, repoName, err := splitRepoName(d.Get("repository").(string))
+	if err != nil {
+		return err
+	}
+
+	secret := drone.Secret{
+		Name: d.Get("name").(string),
+	}
+
+	if d.HasChange("value") {
+		secret.Value = d.Get("value").(string)
+	}
+
+	if d.HasChange("events") {
+		eventsRaw := d.Get("events")
+		events := []string{}
+		for _, event := range eventsRaw.([]interface{}) {
+			events = append(events, event.(string))
+		}
+		secret.Events = events
+	}
+
+	_, err = client.SecretUpdate(owner, repoName, &secret)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func resourceSecretDelete(d *schema.ResourceData, m interface{}) error {
-	d.SetId("")
-	config := new(oauth2.Config)
-	auther := config.Client(
-		oauth2.NoContext,
-		&oauth2.Token{
-			AccessToken: token,
-		},
-	)
-	repository := d.Get("repository").(string)
-        repositoryNameParts := strings.Split(repository, "/")
-        if len(repositoryNameParts) != 2 {
-                return errors.New("repo name must be 'org/name'")
-        }
+	client := getDroneClient()
 
 	name := d.Get("name").(string)
+	owner, repoName, err := splitRepoName(d.Get("repository").(string))
+	if err != nil {
+		return err
+	}
 
-	client := drone.NewClient(host, auther)
-
-	_, err := client.Secret(repositoryNameParts[0], repositoryNameParts[1], name)
+	err = client.SecretDelete(owner, repoName, name)
 	if err != nil {
 		return err
 	}
