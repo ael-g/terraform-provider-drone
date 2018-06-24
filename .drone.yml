@@ -1,0 +1,6 @@
+pipeline:
+  just_echo:
+    image: alpine
+    secrets: [ yeah]
+    commands:
+      - echo $yeah
