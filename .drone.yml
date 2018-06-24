@@ -3,5 +3,5 @@ pipeline:
     image: alpine
     secrets: [ yeah ]
     commands:
-      - echo yeah secret is ${YEAH} > tmp
+      - echo yeah secret is $${YEAH} > tmp
       - cat tmp
