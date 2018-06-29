@@ -36,7 +36,7 @@ func droneSecret() *schema.Resource {
 }
 
 func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
-	client := getDroneClient()
+	client := m.(drone.Client)
 
 	owner, repoName, err := splitRepoName(d.Get("repository").(string))
 	if err != nil {
@@ -68,7 +68,7 @@ func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
-	client := getDroneClient()
+	client := m.(drone.Client)
 
 	owner, repoName, err := splitRepoName(d.Get("repository").(string))
 	if err != nil {
@@ -77,19 +77,25 @@ func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
 
 	name := d.Get("name").(string)
 
-	secret, err := client.Secret(owner, repoName, name)
+	secrets, err := client.SecretList(owner, repoName)
 	if err != nil {
-		d.SetId("")
-		return nil
+		return err
 	}
 
-	d.Set("events", secret.Events)
+        for _, secret := range secrets {
+                if secret.Name == name {
+			d.SetId(name)
+			d.Set("events", secret.Events)
+			return nil
+                }
+        }
 
+	d.SetId("")
 	return nil
 }
 
 func resourceSecretUpdate(d *schema.ResourceData, m interface{}) error {
-	client := getDroneClient()
+	client := m.(drone.Client)
 
 	owner, repoName, err := splitRepoName(d.Get("repository").(string))
 	if err != nil {
@@ -122,7 +128,7 @@ func resourceSecretUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceSecretDelete(d *schema.ResourceData, m interface{}) error {
-	client := getDroneClient()
+	client := m.(drone.Client)
 
 	name := d.Get("name").(string)
 	owner, repoName, err := splitRepoName(d.Get("repository").(string))

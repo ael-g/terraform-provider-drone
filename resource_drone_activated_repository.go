@@ -44,7 +44,7 @@ func droneActivatedRepository() *schema.Resource {
 }
 
 func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) error {
-        client := getDroneClient()
+        client := m.(drone.Client)
 
 	repoFullName := d.Get("name").(string)
 
@@ -86,7 +86,7 @@ func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) er
 }
 
 func resourceActivatedRepositoryRead(d *schema.ResourceData, m interface{}) error {
-	client := getDroneClient()
+	client := m.(drone.Client)
 
 	repoFullName := d.Get("name").(string)
 
@@ -100,19 +100,15 @@ func resourceActivatedRepositoryRead(d *schema.ResourceData, m interface{}) erro
 		return err
 	}
 
-	notFound := true
 	for _, repo := range repoList {
 		if repo.Name == repoName && repo.Owner == owner {
-			notFound = false
-			//d.Set("is_trusted", repo.IsTrusted)
-			//d.Set("timeout", repo.Timeout)
+			d.Set("is_trusted", repo.IsTrusted)
+			d.Set("timeout", repo.Timeout)
+			return nil
 		}
 	}
 
-	if notFound {
-		d.SetId("")
-		return nil
-	}
+	d.SetId("")
 
 	return nil
 }
@@ -122,7 +118,7 @@ func resourceActivatedRepositoryUpdate(d *schema.ResourceData, m interface{}) er
 }
 
 func resourceActivatedRepositoryDelete(d *schema.ResourceData, m interface{}) error {
-	client := getDroneClient()
+	client := m.(drone.Client)
 
         owner, repoName, err := splitRepoName(d.Get("name").(string))
         if err != nil {
