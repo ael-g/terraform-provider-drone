@@ -46,7 +46,7 @@ func droneActivatedRepository() *schema.Resource {
 				Default: false,
 				Optional: true,
 			},
-			"allow_deployment": &schema.Schema{
+			"allow_deploy": &schema.Schema{
 				Type:     schema.TypeBool,
 				Default: false,
 				Optional: true,
