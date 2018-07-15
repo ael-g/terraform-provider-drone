@@ -19,7 +19,7 @@ func Provider() *schema.Provider {
                                 Type:        schema.TypeString,
                                 Required:    true,
                                 DefaultFunc: schema.EnvDefaultFunc("DRONE_TOKEN", ""),
-                                Description: "",
+                                Description: "Your personal Drone token",
                         },
 		},
                 ResourcesMap: map[string]*schema.Resource{

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/drone/drone-go/drone"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -25,6 +27,7 @@ func droneSecret() *schema.Resource {
 			"value": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
                         "events": &schema.Schema{
                                 Type:     schema.TypeList,
@@ -57,12 +60,12 @@ func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
 		Events: events,
 	}
 
-	_, err = client.SecretCreate(owner, repoName, &secret)
+	secretRemote, err := client.SecretCreate(owner, repoName, &secret)
 	if err != nil {
 		return err
 	}
 
-	d.SetId(name)
+	d.SetId(strconv.FormatInt(secretRemote.ID, 10))
 
 	return nil
 }
@@ -75,7 +78,10 @@ func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 
-	name := d.Get("name").(string)
+	Id, err := strconv.ParseInt(d.Id(), 10, 64)
+	if err != nil {
+		return err
+	}
 
 	secrets, err := client.SecretList(owner, repoName)
 	if err != nil {
@@ -83,8 +89,7 @@ func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
 	}
 
         for _, secret := range secrets {
-                if secret.Name == name {
-			d.SetId(name)
+                if secret.ID == Id {
 			d.Set("events", secret.Events)
 			return nil
                 }
