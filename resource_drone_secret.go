@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/drone/drone-go/drone"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -32,6 +34,16 @@ func droneSecret() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Optional: true,
 			},
+			"pull_request": &schema.Schema{
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+			},
+			"pull_request_push": &schema.Schema{
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -46,12 +58,14 @@ func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
 
 	name := d.Get("name").(string)
 	value := d.Get("value").(string)
+	pullRequest := d.Get("pull_request").(bool)
+	pullRequestPush := d.Get("pull_request_push").(bool)
 
 	secret := drone.Secret{
 		Name:            name,
 		Data:            value,
-		PullRequest:     true,
-		PullRequestPush: true,
+		PullRequest:     pullRequest,
+		PullRequestPush: pullRequestPush,
 	}
 
 	_, err = client.SecretCreate(owner, repoName, &secret)
@@ -66,7 +80,6 @@ func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
 
 func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(drone.Client)
-
 	owner, repoName, err := splitRepoName(d.Get("repository").(string))
 	if err != nil {
 		return err
@@ -76,8 +89,8 @@ func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-
 	for _, secret := range secrets {
+		log.Println(secret)
 		if repoName+"/"+secret.Name == d.Id() {
 			return nil
 		}
@@ -101,6 +114,14 @@ func resourceSecretUpdate(d *schema.ResourceData, m interface{}) error {
 
 	if d.HasChange("value") {
 		secret.Data = d.Get("value").(string)
+	}
+
+	if d.HasChange("pull_request") {
+		secret.PullRequest = d.Get("pull_request").(bool)
+	}
+
+	if d.HasChange("pull_request_push") {
+		secret.PullRequestPush = d.Get("pull_request_push").(bool)
 	}
 
 	_, err = client.SecretUpdate(owner, repoName, &secret)

@@ -70,7 +70,7 @@ func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) er
 		return err
 	}
 
-	// Check if repo is already
+	// Check if repo is already active
 	repo, err := client.Repo(owner, repoName)
 	if repo != nil && !repo.Active {
 		_, err = client.RepoEnable(owner, repoName)
@@ -86,12 +86,26 @@ func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) er
 		repoPatch.Timeout = &timeoutTmp
 	}
 
+	isTrusted, ok := d.GetOkExists("is_trusted")
+	if ok {
+		isTrustedTmp := isTrusted.(bool)
+		repoPatch.Trusted = &isTrustedTmp
+	}
+
+	isProtected, ok := d.GetOkExists("is_protected")
+	if ok {
+		isProtectedTmp := isProtected.(bool)
+		repoPatch.Protected = &isProtectedTmp
+	}
+
 	repo, err = client.RepoUpdate(owner, repoName, &repoPatch)
 	if err != nil {
 		return err
 	}
 
 	d.Set("timeout", repo.Timeout)
+	d.Set("is_protected", repo.Protected)
+	d.Set("is_trusted", repo.Trusted)
 
 	d.SetId(repoFullName)
 
@@ -114,8 +128,10 @@ func resourceActivatedRepositoryRead(d *schema.ResourceData, m interface{}) erro
 	}
 
 	for _, repo := range repoList {
-		if repo.Name == repoName {
+		if repo.Name == repoName && repo.Active {
 			d.Set("timeout", repo.Timeout)
+			d.Set("is_protected", repo.Protected)
+			d.Set("is_trusted", repo.Trusted)
 			return nil
 		}
 	}
@@ -137,10 +153,22 @@ func resourceActivatedRepositoryUpdate(d *schema.ResourceData, m interface{}) er
 
 	repoPatch := drone.RepoPatch{}
 
-	timeout, ok := d.GetOk("timeout")
+	timeout, ok := d.GetOkExists("timeout")
 	if ok {
 		timeoutTmp := int64(timeout.(int))
 		repoPatch.Timeout = &timeoutTmp
+	}
+
+	isTrusted, ok := d.GetOkExists("is_trusted")
+	if ok {
+		isTrustedTmp := isTrusted.(bool)
+		repoPatch.Trusted = &isTrustedTmp
+	}
+
+	isProtected, ok := d.GetOkExists("is_protected")
+	if ok {
+		isProtectedTmp := isProtected.(bool)
+		repoPatch.Protected = &isProtectedTmp
 	}
 
 	repo, err := client.RepoUpdate(owner, repoName, &repoPatch)
@@ -148,6 +176,7 @@ func resourceActivatedRepositoryUpdate(d *schema.ResourceData, m interface{}) er
 		return err
 	}
 
+	d.Set("is_trusted", repo.Trusted)
 	d.Set("timeout", repo.Timeout)
 
 	return nil
