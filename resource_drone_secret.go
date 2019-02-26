@@ -1,8 +1,6 @@
 package main
 
 import (
-	"log"
-
 	"github.com/drone/drone-go/drone"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -68,6 +66,16 @@ func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
 		PullRequestPush: pullRequestPush,
 	}
 
+	secrets, err := client.SecretList(owner, repoName)
+	if err != nil {
+		return err
+	}
+	for _, secretItem := range secrets {
+		if secretItem.Name == secret.Name {
+			client.SecretDelete(owner, repoName, secret.Name)
+		}
+	}
+
 	_, err = client.SecretCreate(owner, repoName, &secret)
 	if err != nil {
 		return err
@@ -80,6 +88,7 @@ func resourceSecretCreate(d *schema.ResourceData, m interface{}) error {
 
 func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
 	client := m.(drone.Client)
+
 	owner, repoName, err := splitRepoName(d.Get("repository").(string))
 	if err != nil {
 		return err
@@ -89,8 +98,8 @@ func resourceSecretRead(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	for _, secret := range secrets {
-		log.Println(secret)
 		if repoName+"/"+secret.Name == d.Id() {
 			return nil
 		}
