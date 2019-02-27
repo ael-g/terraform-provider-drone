@@ -17,6 +17,10 @@ func droneActivatedRepository() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"configuration": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"is_protected": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -80,6 +84,12 @@ func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) er
 	}
 	repoPatch := drone.RepoPatch{}
 
+	configuration, ok := d.GetOkExists("configuration")
+	if ok {
+		configurationTmp := configuration.(string)
+		repoPatch.Config = &configurationTmp
+	}
+
 	timeout, ok := d.GetOk("timeout")
 	if ok {
 		timeoutTmp := int64(timeout.(int))
@@ -103,6 +113,7 @@ func resourceActivatedRepositoryCreate(d *schema.ResourceData, m interface{}) er
 		return err
 	}
 
+	d.Set("configuration", repo.Config)
 	d.Set("timeout", repo.Timeout)
 	d.Set("is_protected", repo.Protected)
 	d.Set("is_trusted", repo.Trusted)
@@ -130,6 +141,7 @@ func resourceActivatedRepositoryRead(d *schema.ResourceData, m interface{}) erro
 	for _, repo := range repoList {
 		if repo.Name == repoName && repo.Active {
 			d.Set("timeout", repo.Timeout)
+			d.Set("configuration", repo.Config)
 			d.Set("is_protected", repo.Protected)
 			d.Set("is_trusted", repo.Trusted)
 			return nil
@@ -152,6 +164,12 @@ func resourceActivatedRepositoryUpdate(d *schema.ResourceData, m interface{}) er
 	}
 
 	repoPatch := drone.RepoPatch{}
+
+	configuration, ok := d.GetOkExists("configuration")
+	if ok {
+		configurationTmp := configuration.(string)
+		repoPatch.Config = &configurationTmp
+	}
 
 	timeout, ok := d.GetOkExists("timeout")
 	if ok {
@@ -177,6 +195,7 @@ func resourceActivatedRepositoryUpdate(d *schema.ResourceData, m interface{}) er
 	}
 
 	d.Set("is_trusted", repo.Trusted)
+	d.Set("configuration", repo.Config)
 	d.Set("timeout", repo.Timeout)
 
 	return nil
